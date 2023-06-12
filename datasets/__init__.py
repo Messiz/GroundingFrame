@@ -4,7 +4,7 @@ import torchvision
 from torchvision.transforms import Compose, ToTensor, Normalize
 
 import datasets.transforms as T
-from .data_loader import TransVGDataset
+from .data_loader import TransVGDataset, MIMIC_CXRDataset
 
 
 def make_transforms(args, image_set, is_onestage=False):
@@ -29,7 +29,7 @@ def make_transforms(args, image_set, is_onestage=False):
             crop_prob = 0.5
         else:
             crop_prob = 0.
-    
+
         return T.Compose([
             T.RandomSelect(
                 T.RandomResize(scales),
@@ -47,7 +47,6 @@ def make_transforms(args, image_set, is_onestage=False):
             T.NormalizeAndPad(size=imsize, aug_translate=args.aug_translate)
         ])
 
-
     if image_set in ['val', 'test', 'testA', 'testB']:
         return T.Compose([
             T.RandomResize([imsize]),
@@ -58,10 +57,14 @@ def make_transforms(args, image_set, is_onestage=False):
     raise ValueError(f'unknown {image_set}')
 
 
-def build_dataset(split, args):
-    return TransVGDataset(data_root=args.data_root,
-                        split_root=args.split_root,
-                        dataset=args.dataset,
-                        split=split,
-                        transform=make_transforms(args, split),
-                        max_query_len=args.max_query_len)
+def build_dataset(split, args, name='default'):
+    if name == 'mimic-cxr':
+        dataset = MIMIC_CXRDataset()  # TODO
+    else:
+        dataset = TransVGDataset(data_root=args.data_root,
+                                 split_root=args.split_root,
+                                 dataset=args.dataset,
+                                 split=split,
+                                 transform=make_transforms(args, split),
+                                 max_query_len=args.max_query_len)
+    return dataset

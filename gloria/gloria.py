@@ -18,13 +18,13 @@ random.seed(6)
 
 
 _MODELS = {
-    "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
-    "gloria_resnet18": "./pretrained/chexpert_resnet18.ckpt",
+    "gloria_resnet50": "gloria/pretrained/chexpert_resnet50.ckpt",
+    "gloria_resnet18": "gloria/pretrained/chexpert_resnet18.ckpt",
 }
 
 
 _SEGMENTATION_MODELS = {
-    "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
+    "gloria_resnet50": "gloria/pretrained/chexpert_resnet50.ckpt",
 }
 
 

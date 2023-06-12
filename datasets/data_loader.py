@@ -286,3 +286,104 @@ class TransVGDataset(data.Dataset):
             # print(img.shape)
             return img, np.array(img_mask), np.array(word_id, dtype=int), np.array(word_mask, dtype=int), np.array(bbox,
                                                                                                                    dtype=np.float32)
+
+
+class MIMIC_CXRDataset(data.Dataset):
+
+    def __init__(self, data_root, split_root='data', dataset='mimic-cxr',
+                 transform=None, return_idx=False, testmode=False,
+                 split='train', max_query_len=128, lstm=False,
+                 bert_model='bert-base-uncased'):
+        self.images = []
+        self.data_root = data_root
+        self.split_root = split_root
+        self.dataset = dataset
+        self.query_len = max_query_len
+        self.lstm = lstm
+        self.transform = transform
+        self.testmode = testmode
+        self.split = split
+        self.tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
+        self.return_idx = return_idx
+
+        assert self.transform is not None
+
+        if split == 'train':
+            self.augment = True
+        else:
+            self.augment = False
+
+        # 文件路径
+        self.dataset_root = osp.join(self.data_root, 'other')
+        self.im_dir = osp.join(
+            self.dataset_root, 'images', 'mscoco', 'images', 'train2014')
+        self.split_dir = osp.join(self.dataset_root, 'splits')
+
+        dataset_path = osp.join(self.split_root, self.dataset)
+        valid_splits = {'train'}  # mimic_cxr只有弱标注
+
+        if self.lstm:
+            self.corpus = Corpus()
+            corpus_path = osp.join(dataset_path, 'corpus.pth')
+            self.corpus = torch.load(corpus_path)
+
+        if split not in valid_splits:
+            raise ValueError(
+                'Dataset {0} does not have split {1}'.format(
+                    self.dataset, split))
+
+        splits = [split]
+        # if self.dataset != 'referit':
+        #     splits = ['train', 'val'] if split == 'trainval' else [split]
+        # 载入图片
+        for split in splits:
+            imgset_file = '{0}_{1}.pth'.format(self.dataset, split)
+            imgset_path = osp.join(dataset_path, imgset_file)
+            self.images += torch.load(imgset_path)
+
+    def pull_item(self, idx):
+        # mimic-cxr只有img和phrase
+        img_file, phrase = self.images[idx]
+
+        img_path = osp.join(self.im_dir, img_file)
+        img = Image.open(img_path).convert("RGB")
+        return img, phrase
+
+    def tokenize_phrase(self, phrase):
+        return self.corpus.tokenize(phrase, self.query_len)
+
+    def untokenize_word_vector(self, words):
+        return self.corpus.dictionary[words]
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        img, phrase = self.pull_item(idx)
+        # phrase = phrase.decode("utf-8").encode().lower()
+        phrase = phrase.lower()
+        input_dict = {'img': img, 'text': phrase}
+        input_dict = self.transform(input_dict)
+        img = input_dict['img']
+        phrase = input_dict['text']
+        img_mask = input_dict['mask']
+
+        if self.lstm:
+            phrase = self.tokenize_phrase(phrase)
+            word_id = phrase
+            word_mask = np.array(word_id > 0, dtype=int)
+        else:
+            ## encode phrase to bert input
+            examples = read_examples(phrase, idx)
+            features = convert_examples_to_features(
+                examples=examples, seq_length=self.query_len, tokenizer=self.tokenizer)
+            word_id = features[0].input_ids
+            word_mask = features[0].input_mask
+
+        if self.testmode:
+            return img, np.array(word_id, dtype=int), np.array(word_mask, dtype=int), \
+                   np.array(bbox, dtype=np.float32), np.array(ratio, dtype=np.float32), \
+                   np.array(dw, dtype=np.float32), np.array(dh, dtype=np.float32), self.images[idx][0]
+        else:
+            # print(img.shape)
+            return img, np.array(img_mask), np.array(word_id, dtype=int), np.array(word_mask, dtype=int)
