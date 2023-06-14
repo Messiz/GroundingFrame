@@ -94,6 +94,47 @@ def get_args_parser():
     parser.add_argument('--vl_enc_layers', default=6, type=int,
                         help='Number of encoders in the vision-language transformer')
 
+    # Gloria
+    # gloria:
+    #         local_loss_weight: 1.0
+    #         global_loss_weight: 1.0
+    #         temp1: 4.0
+    #         temp2: 5.0
+    #         temp3: 10.0
+    #     vision:
+    #         model_name: 'resnet_50'
+    #         freeze_cnn: false
+    #         pretrained: true
+    #     text:
+    #         bert_type: "emilyalsentzer/Bio_ClinicalBERT"
+    #         last_n_layers: 4
+    #         aggregate_method: 'sum'
+    #         norm: false
+    #         embedding_dim: 768
+    #         freeze_bert: false
+    #         agg_tokens: true
+    parser.add_argument('--local_loss_weight', default=1.0, type=float)
+    parser.add_argument('--global_loss_weight', default=1.0, type=float)
+    parser.add_argument('--temp1', default=4.0, type=float)
+    parser.add_argument('--temp2', default=5.0, type=float)
+    parser.add_argument('--temp3', default=10.0, type=float)
+    parser.add_argument('--vision_model_name', default='resnet_50', type=str)
+    parser.add_argument('--vision_freeze_cnn', default=False, type=bool)
+    parser.add_argument('--vision_pretrained', default=True, type=bool)
+    parser.add_argument('--text_bert_type', default='emilyalsentzer/Bio_ClinicalBERT', type=str)
+    parser.add_argument('--text_last_n_layers', default=4, type=int)
+    parser.add_argument('--text_aggregate_method', default='sum', type=str)
+    parser.add_argument('--text_norm', default=False, type=bool)
+    parser.add_argument('--text_embedding_dim', default=768, type=int)
+    parser.add_argument('--text_freeze_bert', default=False, type=bool)
+    parser.add_argument('--text_agg_tokens', default=True, type=bool)
+
+    parser.add_argument('--vision_num_targets', default=5, type=int)
+
+
+
+
+
     # Dataset parameters
     parser.add_argument('--data_root', type=str, default='./ln_data/',
                         help='path to ReferIt splits data folder')
