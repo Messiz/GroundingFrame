@@ -4,7 +4,7 @@ import torchvision
 from torchvision.transforms import Compose, ToTensor, Normalize
 
 import datasets.transforms as T
-from .data_loader import TransVGDataset, MIMIC_CXRDataset
+from .data_loader import TransVGDataset, MIMIC_CXRDataset, MS_CXRDataset
 
 
 def make_transforms(args, image_set, is_onestage=False):
@@ -57,9 +57,11 @@ def make_transforms(args, image_set, is_onestage=False):
     raise ValueError(f'unknown {image_set}')
 
 
-def build_dataset(split, args, name='default'):
-    if name == 'mimic-cxr':
+def build_dataset(split, args):
+    if args.dataset == 'mimic-cxr':
         dataset = MIMIC_CXRDataset()  # TODO
+    elif args.dataset == 'ms-cxr':
+        dataset = MS_CXRDataset()   # TODO
     else:
         dataset = TransVGDataset(data_root=args.data_root,
                                  split_root=args.split_root,

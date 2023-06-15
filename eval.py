@@ -35,7 +35,7 @@ def get_args_parser():
     parser.add_argument('--optimizer', default='rmsprop', type=str)
     parser.add_argument('--lr_scheduler', default='poly', type=str)
     parser.add_argument('--lr_drop', default=80, type=int)
-    
+
     # Augmentation options
     parser.add_argument('--aug_blur', action='store_true',
                         help="If true, use gaussian blur augmentation")
@@ -49,7 +49,7 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model_name', type=str, default='TransVG',
                         help="Name of model to be exploited.")
-    
+
     # Transformers in two branches
     parser.add_argument('--bert_enc_num', default=12, type=int)
     parser.add_argument('--detr_enc_num', default=6, type=int)
@@ -60,7 +60,8 @@ def get_args_parser():
                         help="Name of the convolutional backbone to use")
     parser.add_argument('--dilation', action='store_true',
                         help="If true, we replace stride with dilation in the last convolutional block (DC5)")
-    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'), help="Type of positional embedding to use on top of the image features")
+    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
+                        help="Type of positional embedding to use on top of the image features")
     # * Transformer
     parser.add_argument('--enc_layers', default=6, type=int,
                         help="Number of encoding layers in the transformer")
@@ -100,11 +101,11 @@ def get_args_parser():
                         help='path to ReferIt splits data folder')
     parser.add_argument('--split_root', type=str, default='data',
                         help='location of pre-parsed dataset info')
-    parser.add_argument('--dataset', default='referit', type=str,
-                        help='referit/flickr/unc/unc+/gref')
+    parser.add_argument('--dataset', default='ms-cxr', type=str,
+                        help='referit/flickr/unc/unc+/gref/ms-cxr/mimic-cxr')
     parser.add_argument('--max_query_len', default=20, type=int,
                         help='maximum time steps (lang length) per batch')
-    
+
     # dataset parameters
     parser.add_argument('--output_dir', default='./outputs',
                         help='path where to save, empty for no saving')
@@ -125,8 +126,28 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
 
     # evalutaion options
-    parser.add_argument('--eval_set', default='text', type=str)
+    parser.add_argument('--eval_set', default='text', type=str)  # text or test?
     parser.add_argument('--eval_model', default='', type=str)
+
+    # gloria parameters
+    parser.add_argument('--pretrained_gloria_model_name', default='gloria_resnet50', type=str)
+    parser.add_argument('--local_loss_weight', default=1.0, type=float)
+    parser.add_argument('--global_loss_weight', default=1.0, type=float)
+    parser.add_argument('--temp1', default=4.0, type=float)
+    parser.add_argument('--temp2', default=5.0, type=float)
+    parser.add_argument('--temp3', default=10.0, type=float)
+    parser.add_argument('--vision_model_name', default='resnet_50', type=str)
+    parser.add_argument('--vision_freeze_cnn', default=False, type=bool)
+    parser.add_argument('--vision_pretrained', default=True, type=bool)
+    parser.add_argument('--text_bert_type', default='emilyalsentzer/Bio_ClinicalBERT', type=str)
+    parser.add_argument('--text_last_n_layers', default=4, type=int)
+    parser.add_argument('--text_aggregate_method', default='sum', type=str)
+    parser.add_argument('--text_norm', default=False, type=bool)
+    parser.add_argument('--text_embedding_dim', default=768, type=int)
+    parser.add_argument('--text_freeze_bert', default=False, type=bool)
+    parser.add_argument('--text_agg_tokens', default=True, type=bool)
+
+    parser.add_argument('--vision_num_targets', default=5, type=int)
 
     return parser
 
@@ -159,47 +180,50 @@ def main(args):
     ## note certain dataset does not have 'test' set:
     ## 'unc': {'train', 'val', 'trainval', 'testA', 'testB'}
     # dataset_test  = build_dataset('test', args)
-    
+
     if args.distributed:
         sampler_test = DistributedSampler(dataset_test, shuffle=False)
     else:
         sampler_test = torch.utils.data.SequentialSampler(dataset_test)
-    
+
     batch_sampler_test = torch.utils.data.BatchSampler(
         sampler_test, args.batch_size, drop_last=False)
 
     data_loader_test = DataLoader(dataset_test, args.batch_size, sampler=sampler_test,
-                                 drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
+                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
-    checkpoint = torch.load(args.eval_model, map_location='cpu')
-    model_without_ddp.load_state_dict(checkpoint['model'])
+    # 载入checkpoint（如果gloria就不用载入）
+    if args.model_name != 'gloria':
+        checkpoint = torch.load(args.eval_model, map_location='cpu')
+        model_without_ddp.load_state_dict(checkpoint['model'])
 
     # output log
     output_dir = Path(args.output_dir)
     if args.output_dir and utils.is_main_process():
         with (output_dir / "eval_log.txt").open("a") as f:
             f.write(str(args) + "\n")
-    
+
     start_time = time.time()
-    
+
     # perform evaluation
     accuracy = evaluate(args, model, data_loader_test, device)
-    
+
     if utils.is_main_process():
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print('Training time {}'.format(total_time_str))
 
         log_stats = {'test_model:': args.eval_model,
-                    '%s_set_accuracy'%args.eval_set: accuracy,
-                    }
+                     '%s_set_accuracy' % args.eval_set: accuracy,
+                     }
         print(log_stats)
         if args.output_dir and utils.is_main_process():
-                with (output_dir / "eval_log.txt").open("a") as f:
-                    f.write(json.dumps(log_stats) + "\n")
+            with (output_dir / "eval_log.txt").open("a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('TransVG evaluation script', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser('Visual Grounding evaluation script', parents=[get_args_parser()])
     args = parser.parse_args()
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)

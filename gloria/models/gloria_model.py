@@ -108,7 +108,7 @@ class GLoRIA(nn.Module):
         for i in range(len(text_emb_l)):
             words_num = cap_lens[i]
             word = (
-                text_emb_l[i, :, 1 : words_num + 1].unsqueeze(0).contiguous()
+                text_emb_l[i, :, 1: words_num + 1].unsqueeze(0).contiguous()
             )  # [1, 768, 25]
 
             word = word.repeat(batch_size, 1, 1)  # [48, 768, 25]
@@ -254,7 +254,6 @@ class GLoRIA(nn.Module):
 
         all_imgs = []
         for p in paths:
-
             x = cv2.imread(str(p), 0)
 
             # tranform images

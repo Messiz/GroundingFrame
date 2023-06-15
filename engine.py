@@ -16,8 +16,8 @@ import utils.loss_utils as loss_utils
 import utils.eval_utils as eval_utils
 
 
-def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable, 
-                    optimizer: torch.optim.Optimizer, device: torch.device, 
+def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
+                    optimizer: torch.optim.Optimizer, device: torch.device,
                     epoch: int, max_norm: float = 0):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -50,13 +50,13 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
             print("Loss is {}, stopping training".format(loss_value))
             print(loss_dict_reduced)
             sys.exit(1)
-        
+
         optimizer.zero_grad()
         losses.backward()
         if max_norm > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
         optimizer.step()
-        
+
         metric_logger.update(loss=loss_value, **loss_dict_reduced_unscaled)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
     # gather the stats from all processes
@@ -79,10 +79,10 @@ def validate(args, model: torch.nn.Module, data_loader: Iterable, device: torch.
         img_data = img_data.to(device)
         text_data = text_data.to(device)
         target = target.to(device)
-        
+
         pred_boxes = model(img_data, text_data)
         miou, accu = eval_utils.trans_vg_eval_val(pred_boxes, target)
-        
+
         metric_logger.update_v2('miou', torch.mean(miou), batch_size)
         metric_logger.update_v2('accu', accu, batch_size)
 
@@ -116,11 +116,10 @@ def evaluate(args, model: torch.nn.Module, data_loader: Iterable, device: torch.
     accu_num = eval_utils.trans_vg_eval_test(pred_boxes, gt_boxes)
 
     result_tensor = torch.tensor([accu_num, total_num]).to(device)
-    
+
     torch.cuda.synchronize()
     dist.all_reduce(result_tensor)
 
     accuracy = float(result_tensor[0]) / float(result_tensor[1])
-    
+
     return accuracy
-        

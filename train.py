@@ -35,7 +35,7 @@ def get_args_parser():
     parser.add_argument('--optimizer', default='adamw', type=str)
     parser.add_argument('--lr_scheduler', default='step', type=str)
     parser.add_argument('--lr_drop', default=60, type=int)
-    
+
     # Augmentation options
     parser.add_argument('--aug_blur', action='store_true',
                         help="If true, use gaussian blur augmentation")
@@ -49,14 +49,15 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model_name', type=str, default='TransVG',
                         help="Name of model to be exploited.")
-    
+
     # DETR parameters
     # * Backbone
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help="Name of the convolutional backbone to use")
     parser.add_argument('--dilation', action='store_true',
                         help="If true, we replace stride with dilation in the last convolutional block (DC5)")
-    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'), help="Type of positional embedding to use on top of the image features")
+    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
+                        help="Type of positional embedding to use on top of the image features")
     # * Transformer
     parser.add_argument('--enc_layers', default=6, type=int,
                         help="Number of encoding layers in the transformer")
@@ -113,6 +114,8 @@ def get_args_parser():
     #         embedding_dim: 768
     #         freeze_bert: false
     #         agg_tokens: true
+
+    parser.add_argument('--pretrained_gloria_model_name', default='gloria_resnet50', type=str)
     parser.add_argument('--local_loss_weight', default=1.0, type=float)
     parser.add_argument('--global_loss_weight', default=1.0, type=float)
     parser.add_argument('--temp1', default=4.0, type=float)
@@ -131,10 +134,6 @@ def get_args_parser():
 
     parser.add_argument('--vision_num_targets', default=5, type=int)
 
-
-
-
-
     # Dataset parameters
     parser.add_argument('--data_root', type=str, default='./ln_data/',
                         help='path to ReferIt splits data folder')
@@ -144,7 +143,7 @@ def get_args_parser():
                         help='referit/unc/unc+/gref/gref_umd')
     parser.add_argument('--max_query_len', default=20, type=int,
                         help='maximum time steps (lang length) per batch')
-    
+
     # dataset parameters
     parser.add_argument('--output_dir', default='./outputs',
                         help='path where to save, empty for no saving')
@@ -176,7 +175,7 @@ def main(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    
+
     # build model
     model = build_model(args)
     model.to(device)
@@ -188,21 +187,24 @@ def main(args):
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
 
-    visu_cnn_param = [p for n, p in model_without_ddp.named_parameters() if (("visumodel" in n) and ("backbone" in n) and p.requires_grad)]
-    visu_tra_param = [p for n, p in model_without_ddp.named_parameters() if (("visumodel" in n) and ("backbone" not in n) and p.requires_grad)]
+    visu_cnn_param = [p for n, p in model_without_ddp.named_parameters() if
+                      (("visumodel" in n) and ("backbone" in n) and p.requires_grad)]
+    visu_tra_param = [p for n, p in model_without_ddp.named_parameters() if
+                      (("visumodel" in n) and ("backbone" not in n) and p.requires_grad)]
     text_tra_param = [p for n, p in model_without_ddp.named_parameters() if (("textmodel" in n) and p.requires_grad)]
-    rest_param = [p for n, p in model_without_ddp.named_parameters() if (("visumodel" not in n) and ("textmodel" not in n) and p.requires_grad)]
+    rest_param = [p for n, p in model_without_ddp.named_parameters() if
+                  (("visumodel" not in n) and ("textmodel" not in n) and p.requires_grad)]
 
     param_list = [{"params": rest_param},
-                   {"params": visu_cnn_param, "lr": args.lr_visu_cnn},
-                   {"params": visu_tra_param, "lr": args.lr_visu_tra},
-                   {"params": text_tra_param, "lr": args.lr_bert},
-                   ]
+                  {"params": visu_cnn_param, "lr": args.lr_visu_cnn},
+                  {"params": visu_tra_param, "lr": args.lr_visu_tra},
+                  {"params": text_tra_param, "lr": args.lr_bert},
+                  ]
     visu_param = [p for n, p in model_without_ddp.named_parameters() if "visumodel" in n and p.requires_grad]
     text_param = [p for n, p in model_without_ddp.named_parameters() if "textmodel" in n and p.requires_grad]
-    rest_param = [p for n, p in model_without_ddp.named_parameters() if (("visumodel" not in n) and ("textmodel" not in n) and p.requires_grad)]
-    
-    
+    rest_param = [p for n, p in model_without_ddp.named_parameters() if
+                  (("visumodel" not in n) and ("textmodel" not in n) and p.requires_grad)]
+
     # using RMSProp or AdamW
     if args.optimizer == 'rmsprop':
         optimizer = torch.optim.RMSprop(param_list, lr=args.lr, weight_decay=args.weight_decay)
@@ -232,18 +234,18 @@ def main(args):
 
     # build dataset
     dataset_train = build_dataset('train', args)
-    dataset_val   = build_dataset('val', args)
+    dataset_val = build_dataset('val', args)
     ## note certain dataset does not have 'test' set:
     ## 'unc': {'train', 'val', 'trainval', 'testA', 'testB'}
     # dataset_test  = build_dataset('test', args)
-    
+
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train, shuffle=True)
-        sampler_val   = DistributedSampler(dataset_val, shuffle=False)
+        sampler_val = DistributedSampler(dataset_val, shuffle=False)
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
-        sampler_val   = torch.utils.data.SequentialSampler(dataset_val)
-    
+        sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
 
@@ -252,7 +254,7 @@ def main(args):
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
-
+    # load checkpoint
     if args.resume:
         checkpoint = torch.load(args.resume, map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'])
@@ -283,7 +285,7 @@ def main(args):
         lr_scheduler.step()
 
         val_stats = validate(args, model, data_loader_val, device)
-        
+
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'validation_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch,
@@ -301,7 +303,7 @@ def main(args):
             if val_stats['accu'] > best_accu:
                 checkpoint_paths.append(output_dir / 'best_checkpoint.pth')
                 best_accu = val_stats['accu']
-            
+
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
