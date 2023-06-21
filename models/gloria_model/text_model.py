@@ -89,7 +89,7 @@ class BertEncoder(nn.Module):
         agg_embs_batch = agg_embs_batch.permute(0, 2, 1, 3)
         return agg_embs_batch, sentences
 
-    def forward(self, ids, attn_mask, token_type):
+    def forward(self, ids, attn_mask, token_type=None):
 
         outputs = self.model(ids, attn_mask, token_type)
 

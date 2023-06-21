@@ -18,6 +18,7 @@ import numpy as np
 import os.path as osp
 import scipy.io as sio
 import torch.utils.data as data
+from transformers import AutoModel, AutoTokenizer
 
 sys.path.append('.')
 
@@ -303,7 +304,7 @@ class MIMIC_CXRDataset(data.Dataset):
         self.transform = transform
         self.testmode = testmode
         self.split = split
-        self.tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.return_idx = return_idx
 
         assert self.transform is not None
@@ -405,7 +406,7 @@ class MS_CXRDataset(data.Dataset):
         self.transform = transform
         self.testmode = testmode
         self.split = split
-        self.tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(bert_model)
         self.return_idx = return_idx
 
         assert self.transform is not None
@@ -416,9 +417,8 @@ class MS_CXRDataset(data.Dataset):
             self.augment = False
 
         # 文件路径
-        self.dataset_root = osp.join(self.data_root, 'other')
-        self.im_dir = osp.join(
-            self.dataset_root, 'images', 'mscoco', 'images', 'train2014')
+        self.dataset_root = osp.join(self.data_root, 'ms-cxr')
+        self.im_dir = osp.join(self.dataset_root, 'images')
         self.split_dir = osp.join(self.dataset_root, 'splits')
 
         dataset_path = osp.join(self.split_root, self.dataset)
@@ -445,11 +445,17 @@ class MS_CXRDataset(data.Dataset):
 
     def pull_item(self, idx):
         # mimic-cxr只有img和phrase
-        img_file, phrase = self.images[idx]
+        img_file, bbox, phrase = self.images[idx]
+
+        bbox = np.array(bbox, dtype=int)
+        bbox[2], bbox[3] = bbox[0] + bbox[2], bbox[1] + bbox[3]     # xywh2xyxy
 
         img_path = osp.join(self.im_dir, img_file)
         img = Image.open(img_path).convert("RGB")
-        return img, phrase
+
+        bbox = torch.tensor(bbox)
+        bbox = bbox.float()
+        return img, phrase, bbox
 
     def tokenize_phrase(self, phrase):
         return self.corpus.tokenize(phrase, self.query_len)
@@ -461,12 +467,13 @@ class MS_CXRDataset(data.Dataset):
         return len(self.images)
 
     def __getitem__(self, idx):
-        img, phrase = self.pull_item(idx)
+        img, phrase, bbox = self.pull_item(idx)
         # phrase = phrase.decode("utf-8").encode().lower()
         phrase = phrase.lower()
-        input_dict = {'img': img, 'text': phrase}
+        input_dict = {'img': img, 'box': bbox, 'text': phrase}
         input_dict = self.transform(input_dict)
         img = input_dict['img']
+        bbox = input_dict['box']
         phrase = input_dict['text']
         img_mask = input_dict['mask']
 
@@ -488,4 +495,6 @@ class MS_CXRDataset(data.Dataset):
                    np.array(dw, dtype=np.float32), np.array(dh, dtype=np.float32), self.images[idx][0]
         else:
             # print(img.shape)
-            return img, np.array(img_mask), np.array(word_id, dtype=int), np.array(word_mask, dtype=int)
+            return img, np.array(img_mask), np.array(word_id, dtype=int), np.array(word_mask, dtype=int), np.array(bbox,
+                                                                                                                   dtype=np.float32)
+

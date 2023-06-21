@@ -13,7 +13,10 @@ def build_model(args):
         model = PretrainedGroundingModel(args)
         # 载入预训练权重
         ckpt_path = _MODELS[args.pretrained_gloria_model_name]
-        ckpt = torch.load(ckpt_path)
+        if args.device=='cpu':
+            ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))
+        else:
+            ckpt = torch.load(ckpt_path)
         # cfg = ckpt["hyper_parameters"]
         ckpt_dict = ckpt["state_dict"]
 

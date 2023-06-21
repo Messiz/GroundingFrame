@@ -59,9 +59,21 @@ def make_transforms(args, image_set, is_onestage=False):
 
 def build_dataset(split, args):
     if args.dataset == 'mimic-cxr':
-        dataset = MIMIC_CXRDataset()  # TODO
+        dataset = MIMIC_CXRDataset(data_root=args.data_root,
+                                   split_root=args.split_root,
+                                   dataset=args.dataset,
+                                   split=split,
+                                   transform=make_transforms(args, split),
+                                   max_query_len=args.max_query_len,
+                                   bert_model=args.text_bert_type)  # TODO
     elif args.dataset == 'ms-cxr':
-        dataset = MS_CXRDataset()   # TODO
+        dataset = MS_CXRDataset(data_root=args.data_root,
+                                split_root=args.split_root,
+                                dataset=args.dataset,
+                                split=split,
+                                transform=make_transforms(args, split),
+                                max_query_len=args.max_query_len,
+                                bert_model=args.text_bert_type)  # TODO
     else:
         dataset = TransVGDataset(data_root=args.data_root,
                                  split_root=args.split_root,

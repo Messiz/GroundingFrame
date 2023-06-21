@@ -56,23 +56,31 @@ class ImageEncoder(nn.Module):
     def resnet_forward(self, x, extract_features=False):
 
         # --> fixed-size input: batch x 3 x 299 x 299
+        print('上采样前：', x.shape)
         x = nn.Upsample(size=(299, 299), mode="bilinear", align_corners=True)(x)
-
+        print('上采样后：', x.shape)
         x = self.model.conv1(x)  # (batch_size, 64, 150, 150)
+        # print("x: ", x.shape)
         x = self.model.bn1(x)
         x = self.model.relu(x)
         x = self.model.maxpool(x)
+        # print("x: ", x.shape)
 
-        x = self.model.layer1(x)  # (batch_size, 64, 75, 75)
-        x = self.model.layer2(x)  # (batch_size, 128, 38, 38)
-        x = self.model.layer3(x)  # (batch_size, 256, 19, 19)
+        x = self.model.layer1(x)  # (batch_size, 64, 75, 75)--(batch_size, 256, 75, 75)
+        # print("x: ", x.shape)
+        x = self.model.layer2(x)  # (batch_size, 128, 38, 38)--(batch_size, 512, 38, 38)
+        # print("x: ", x.shape)
+        x = self.model.layer3(x)  # (batch_size, 256, 19, 19)--(batch_size, 1024, 19, 19)
+        # print("x: ", x.shape)
         local_features = x
-        x = self.model.layer4(x)  # (batch_size, 512, 10, 10)
+        x = self.model.layer4(x)  # (batch_size, 512, 10, 10)--(batch_size, 2048, 10, 10)
 
+        # print("x: ", x.shape)
         x = self.pool(x)
+        # print("x: ", x.shape)
         x = x.view(x.size(0), -1)
-
-        return x, local_features
+        # print("x: ", x.shape)
+        return x, local_features  # (batch_size, 2048)
 
     def densenet_forward(self, x, extract_features=False):
         pass

@@ -17,7 +17,9 @@ import utils.misc as utils
 from models import build_model
 from datasets import build_dataset
 from engine import train_one_epoch, evaluate
+import os
 
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
@@ -47,7 +49,7 @@ def get_args_parser():
                         help="If true, use random translate augmentation")
 
     # Model parameters
-    parser.add_argument('--model_name', type=str, default='TransVG',
+    parser.add_argument('--model_name', type=str, default='gloria',
                         help="Name of model to be exploited.")
 
     # Transformers in two branches
@@ -109,7 +111,7 @@ def get_args_parser():
     # dataset parameters
     parser.add_argument('--output_dir', default='./outputs',
                         help='path where to save, empty for no saving')
-    parser.add_argument('--device', default='cuda',
+    parser.add_argument('--device', default='cpu',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=13, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
@@ -126,7 +128,7 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
 
     # evalutaion options
-    parser.add_argument('--eval_set', default='text', type=str)  # text or test?
+    parser.add_argument('--eval_set', default='test', type=str)  # text or test?
     parser.add_argument('--eval_model', default='', type=str)
 
     # gloria parameters
@@ -177,6 +179,7 @@ def main(args):
 
     # build dataset
     dataset_test = build_dataset(args.eval_set, args)
+    # print(dataset_test.__getitem__(1))
     ## note certain dataset does not have 'test' set:
     ## 'unc': {'train', 'val', 'trainval', 'testA', 'testB'}
     # dataset_test  = build_dataset('test', args)
