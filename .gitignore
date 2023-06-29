@@ -17,4 +17,4 @@ ln_data
 data
 
 *.ckpt
-utils/openai_api_key
+/utils/openai_api_key
