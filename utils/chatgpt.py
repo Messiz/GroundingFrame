@@ -1,10 +1,12 @@
 import openai
 import torch
 
-openai.api_key = "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"
+
+
 
 
 def ask_chatGPT(prompt, max_tokens=200, temperature=0, model="gpt-3.5-turbo"):
+
     completion = openai.ChatCompletion.create(
         model=model,
         messages=[
