@@ -253,7 +253,7 @@ def build_attention_images(
             one_map = attn[j]
             if (vis_size // att_sze) > 1:
                 one_map = skimage.transform.pyramid_expand(
-                    one_map, sigma=20, upscale=vis_size // att_sze, multichannel=True
+                    one_map, sigma=20, upscale=vis_size // att_sze, channel_axis=2
                 )
 
             word_level_attn.append(one_map)

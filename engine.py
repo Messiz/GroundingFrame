@@ -130,7 +130,7 @@ def evaluate(args, model: torch.nn.Module, data_loader: Iterable, device: torch.
 def evaluate_point_game(args, model: torch.nn.Module, data_loader: Iterable, device: torch.device):
     model.eval()
 
-    pred_box_list = []
+    attention_map_list = []
     gt_box_list = []
     for _, batch in enumerate(tqdm(data_loader)):
         img_data, text_data, target = batch
@@ -141,19 +141,22 @@ def evaluate_point_game(args, model: torch.nn.Module, data_loader: Iterable, dev
         target = target.to(device)
         output = model(img_data, text_data)     # 得到attention_map
 
-        pred_box_list.append(output.cpu())
+
+        attention_map_list.append(output.cpu())
         gt_box_list.append(target.cpu())
 
-    pred_boxes = torch.cat(pred_box_list, dim=0)
+    attn_maps = torch.cat(attention_map_list, dim=0)
     gt_boxes = torch.cat(gt_box_list, dim=0)
     total_num = gt_boxes.shape[0]
-    accu_num = eval_utils.trans_vg_eval_test(pred_boxes, gt_boxes)
+    accu_num = eval_utils.eval_pointing_game(attn_maps, gt_boxes)
 
     result_tensor = torch.tensor([accu_num, total_num]).to(device)
 
-    torch.cuda.synchronize()
-    dist.all_reduce(result_tensor)
+    # GPU
+    # torch.cuda.synchronize()
+    # dist.all_reduce(result_tensor)
 
     accuracy = float(result_tensor[0]) / float(result_tensor[1])
+
 
     return accuracy

@@ -16,7 +16,7 @@ import datasets
 import utils.misc as utils
 from models import build_model
 from datasets import build_dataset
-from engine import train_one_epoch, evaluate
+from engine import train_one_epoch, evaluate, evaluate_point_game
 import os
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
@@ -150,6 +150,10 @@ def get_args_parser():
     parser.add_argument('--text_agg_tokens', default=True, type=bool)
 
     parser.add_argument('--vision_num_targets', default=5, type=int)
+    parser.add_argument('--data_text_word_num', default=97, type=int)
+    parser.add_argument('--train_nvis', default=8, type=int)
+    parser.add_argument('--train_rand_vis', default=False, type=bool)
+
 
     return parser
 
@@ -209,7 +213,8 @@ def main(args):
     start_time = time.time()
 
     # perform evaluation
-    accuracy = evaluate(args, model, data_loader_test, device)
+    # accuracy = evaluate(args, model, data_loader_test, device)
+    accuracy = evaluate_point_game(args, model, data_loader_test, device)
 
     if utils.is_main_process():
         total_time = time.time() - start_time

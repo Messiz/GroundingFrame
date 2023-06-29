@@ -125,22 +125,31 @@ class PretrainedGroundingModel(nn.Module):
         #   local_fea: [batch, img_dim, h, w]               32 x 1024 x 19 x 19
         #   len(attention_map)                              32
         #   attention_map[0]:                               1 x seq_len(有效长度) x 19 x 19
+        #   weight_maps:                                    batch_size x 19 x 19
 
-        attention_map = self.get_attn_maps(img_emb_local, word_embeddings, sents)
-        weight = attention_map[0].squeeze(0).mean(dim=0)
-        print(weight.shape)
-        # 创建热力图
-        heatmap = plt.imshow(weight, cmap='hot', alpha=0.8)  # 假设 batch=1，取第一张图片的注意力权重
+        attention_maps = self.get_attn_maps(img_emb_local, word_embeddings, sents)
+        self.plot_attn_maps(attention_maps, image.tensors, sents)
+        weight_maps = torch.cat([attention_map[:, 0, :, :] for attention_map in attention_maps], dim=0)
+        # weight_maps = torch.cat([attn_map.mean(dim=1) for attn_map in attention_maps], dim=0)
+        # weight_maps = torch.stack(attention_maps).mean(dim=1)
+        print(weight_maps.shape)
 
-        # 显示原始图片
-        plt.imshow(image.tensors[0])
+        # print(attention_maps[0].shape)
+        # weight = attention_maps[0].squeeze(0).mean(dim=0)
+        # print(weight.shape)
+        # # 创建热力图
+        # heatmap = plt.imshow(weight, cmap='hot', alpha=0.8)  # 假设 batch=1，取第一张图片的注意力权重
+        #
+        # # 显示原始图片
+        # plt.imshow(image.tensors[0])
+        #
+        # # 将热力图叠加在原始图片上
+        # plt.colorbar(heatmap)
+        #
+        # print(len(attention_maps))
+        # print(attention_maps[0].shape)
 
-        # 将热力图叠加在原始图片上
-        plt.colorbar(heatmap)
-
-        print(len(attention_map))
-        print(attention_map[0].shape)
-
+        return weight_maps
 
     def get_global_similarities(self, img_emb_g, text_emb_g):
         img_emb_g = img_emb_g.detach().cpu().numpy()
@@ -196,16 +205,16 @@ class PretrainedGroundingModel(nn.Module):
         img_set, _ = utils.build_attention_images(
             imgs,
             attn_maps,
-            max_word_num=self.cfg.data.text.word_num,
-            nvis=self.cfg.train.nvis,
-            rand_vis=self.cfg.train.rand_vis,
+            max_word_num=self.args.data_text_word_num,
+            nvis=self.args.train_nvis,
+            rand_vis=self.args.train_rand_vis,
             sentences=sents,
         )
 
         if img_set is not None:
             im = Image.fromarray(img_set)
             fullpath = (
-                f"{self.cfg.output_dir}/"
+                f"{self.args.output_dir}/"
                 f"attention_maps_epoch{epoch_idx}_"
                 f"{batch_idx}.png"
             )
@@ -362,10 +371,6 @@ class PretrainedGroundingModel(nn.Module):
         )
 
         return resized_img
-
-
-
-
 
 
 if __name__ == '__main__':

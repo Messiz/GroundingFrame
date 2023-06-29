@@ -34,6 +34,9 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
 
 def xywh2xyxy(x):
+    # print(x.shape)
+    # x shape: [batch_size, 4]
+    # x_c, y_c, w, h --> x1, y1, x2, y2
     x_c, y_c, w, h = x.unbind(-1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
          (x_c + 0.5 * w), (y_c + 0.5 * h)]
@@ -41,6 +44,7 @@ def xywh2xyxy(x):
 
 
 def xyxy2xywh(x):
+    # x1, y1, x2, y2 --> x_c, y_c, w, h
     x0, y0, x1, y1 = x.unbind(-1)
     b = [(x0 + x1) / 2.0, (y0 + y1) / 2.0,
          (x1 - x0), (y1 - y0)]
@@ -85,3 +89,12 @@ def generalized_box_iou(boxes1, boxes2):
     area = wh[:, :, 0] * wh[:, :, 1]
 
     return iou - (area - union) / area
+
+
+def pointing_game(heat_point, bbox):
+    x0, y0 = heat_point[0], heat_point[1]
+    x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
+    if x0 <= x1 or x0 >= x2 or y0 <= y1 or y0 >= y2:
+        return False
+    else:
+        return True

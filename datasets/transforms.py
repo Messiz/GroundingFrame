@@ -28,7 +28,7 @@ def crop(image, box, region):
 def resize_according_to_long_side(img, box, size):
     h, w = img.height, img.width
     ratio = float(size / float(max(h, w)))
-    new_w, new_h = round(w* ratio), round(h * ratio)
+    new_w, new_h = round(w* ratio), round(h * ratio)    # 使得长边调整为size
     img = F.resize(img, (new_h, new_w))
     box = box * ratio
     
@@ -174,6 +174,8 @@ class RandomResize(object):
         size = random.choice(self.sizes)
         if self.with_long_side:
             resized_img, resized_box = resize_according_to_long_side(img, box, size)
+            # print("resized_img: ", resized_img)
+            # print("resized_box: ", resized_box)
         else:
             resized_img, resized_box = resize_according_to_short_side(img, box, size)
 
@@ -281,8 +283,10 @@ class NormalizeAndPad(object):
             box[0], box[2] = box[0]+left, box[2]+left
             box[1], box[3] = box[1]+top, box[3]+top
             h, w = out_img.shape[-2:]
-            box = xyxy2xywh(box)
-            box = box / torch.tensor([w, h, w, h], dtype=torch.float32)
+            # print("box1: ", box)
+            box = xyxy2xywh(box)    # x_c, y_c, w, h
+            # print("box2: ", box)
+            box = box / torch.tensor([w, h, w, h], dtype=torch.float32)     # 除以图片宽高，得到(0, 1)之间的比例
             input_dict['box'] = box
 
         return input_dict

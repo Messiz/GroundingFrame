@@ -422,7 +422,7 @@ class MS_CXRDataset(data.Dataset):
         self.split_dir = osp.join(self.dataset_root, 'splits')
 
         dataset_path = osp.join(self.split_root, self.dataset)
-        valid_splits = {'test'}  # mimic_cxr只有弱标注
+        valid_splits = {'test'}
 
         if self.lstm:
             self.corpus = Corpus()
@@ -448,7 +448,7 @@ class MS_CXRDataset(data.Dataset):
         img_file, bbox, phrase = self.images[idx]
 
         bbox = np.array(bbox, dtype=int)
-        bbox[2], bbox[3] = bbox[0] + bbox[2], bbox[1] + bbox[3]     # xywh2xyxy
+        bbox[2], bbox[3] = bbox[0] + bbox[2], bbox[1] + bbox[3]     # x1y1wh --> x1y1x2y2
 
         img_path = osp.join(self.im_dir, img_file)
         img = Image.open(img_path).convert("RGB")
@@ -474,6 +474,7 @@ class MS_CXRDataset(data.Dataset):
         input_dict = self.transform(input_dict)
         img = input_dict['img']
         bbox = input_dict['box']
+        # bbox: [x_c, y_c, w, h]    且为(0, 1)中间的值，后需要乘以w和h以得到实际像素坐标值
         phrase = input_dict['text']
         img_mask = input_dict['mask']
 
